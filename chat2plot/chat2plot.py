@@ -11,7 +11,6 @@ import jsonschema
 import pandas as pd
 import pydantic
 from langchain_openai import ChatOpenAI
-from langchain.chat_models.base import BaseChatModel
 from langchain.schema import BaseMessage, FunctionMessage, HumanMessage, SystemMessage
 from plotly.graph_objs import Figure
 
@@ -27,6 +26,11 @@ from chat2plot.render import draw_altair, draw_plotly
 from chat2plot.schema import PlotConfig, ResponseType, get_schema_of_chart_config
 
 _logger = getLogger(__name__)
+
+CHAT = ChatOpenAI(openai_api_base="https://chat.int.bayer.com/api/v2", 
+                openai_api_key="a00d06930e895aab26cfaa13952c2fce667f6656", 
+                model_name="gpt-4o",
+                temperature=0)
 
 T = TypeVar("T", bound=pydantic.BaseModel)
 ModelDeserializer = Callable[[dict[str, Any]], T]
@@ -56,7 +60,7 @@ class ChatSession:
 
     def __init__(
         self,
-        chat: BaseChatModel,
+        chat: ChatOpenAI,
         df: pd.DataFrame,
         system_prompt_template: str,
         user_prompt_template: str,
@@ -129,7 +133,7 @@ class Chat2Plot(Chat2PlotBase):
         df: pd.DataFrame,
         chart_schema: Literal["simple"] | Type[pydantic.BaseModel],
         *,
-        chat: BaseChatModel | None = None,
+        chat: ChatOpenAI | None = None,
         function_call: bool | Literal["auto"] = False,
         language: str | None = None,
         description_strategy: str = "head",
@@ -258,7 +262,7 @@ class Chat2Vega(Chat2PlotBase):
     def __init__(
         self,
         df: pd.DataFrame,
-        chat: BaseChatModel | None = None,
+        chat: ChatOpenAI | None = None,
         language: str | None = None,
         description_strategy: str = "head",
         verbose: bool = False,
@@ -322,7 +326,7 @@ class Chat2Vega(Chat2PlotBase):
 def chat2plot(
     df: pd.DataFrame,
     schema_definition: Literal["simple", "vega"] | Type[pydantic.BaseModel] = "simple",
-    chat: BaseChatModel | None = None,
+    chat: ChatOpenAI | None = None,
     function_call: bool | Literal["auto"] = "auto",
     language: str | None = None,
     description_strategy: str = "head",
@@ -406,13 +410,13 @@ def parse_json(content: str) -> tuple[str, dict[str, Any]]:
     return explanation_part.strip(), delete_null_field(commentjson.loads(json_part))
 
 
-def _get_or_default_chat_model(chat: BaseChatModel | None) -> BaseChatModel:
+def _get_or_default_chat_model(chat: ChatOpenAI | None) -> ChatOpenAI:
     if chat is None:
         return ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo-0613")  # type: ignore
     return chat
 
 
-def _has_function_call_capability(chat: BaseChatModel) -> bool:
+def _has_function_call_capability(chat: ChatOpenAI) -> bool:
     if not isinstance(chat, ChatOpenAI):
         return False
     return any(

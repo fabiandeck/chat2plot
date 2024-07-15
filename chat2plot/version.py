@@ -1,1 +1,1 @@
-__version__ = "0.0.11-bay"
+__version__ = "0.0.11bay"
